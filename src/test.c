@@ -210,7 +210,7 @@ void test_connected_layer()
 
 void test_im2col()
 {
-    image im = load_image("data/test/dog.jpg"); 
+    image im = load_image("data/test/dog.jpg");
     matrix col = im2col(im, 3, 2);
     matrix truth_col = load_matrix("data/test/im2col.matrix");
     matrix col2 = im2col(im, 2, 2);
@@ -226,7 +226,7 @@ void test_im2col()
 
 void test_col2im()
 {
-    image im = load_image("data/test/dog.jpg"); 
+    image im = load_image("data/test/dog.jpg");
     matrix dcol = load_matrix("data/test/dcol.matrix");
     matrix dcol2 = load_matrix("data/test/dcol2.matrix");
     image col2im_res = col2im(im.w, im.h, im.c, dcol, 3, 2);
@@ -258,7 +258,7 @@ void test_col2im()
 
 void test_maxpool_layer()
 {
-    image im = load_image("data/test/dog.jpg"); 
+    image im = load_image("data/test/dog.jpg");
 
     matrix im_mat = {0};
     im_mat.rows = 1;
@@ -383,7 +383,7 @@ void make_matrix_test()
 
     // Maxpool Layer Tests
 
-    image im = load_image("data/test/dog.jpg"); 
+    image im = load_image("data/test/dog.jpg");
 
     matrix im_mat = {0};
     im_mat.rows = 1;
@@ -421,7 +421,7 @@ void make_matrix_test()
 
     // im2col tests
 
-    //image im = load_image("data/test/dog.jpg"); 
+    //image im = load_image("data/test/dog.jpg");
     matrix col = im2col(im, 3, 2);
     matrix col2 = im2col(im, 2, 2);
     save_matrix(col, "data/test/im2col.matrix");
@@ -468,16 +468,15 @@ void test_matrix_speed()
 void run_tests()
 {
     //make_matrix_test();
-    test_copy_matrix();
-    test_axpy_matrix();
-    test_transpose_matrix();
-    test_matmul();
-    test_activation_layer();
-    test_connected_layer();
+    // test_copy_matrix();
+    // test_axpy_matrix();
+    // test_transpose_matrix();
+    // test_matmul();
+    // test_activation_layer();
+    // test_connected_layer();
     test_im2col();
     test_col2im();
     test_maxpool_layer();
 
     printf("%d tests, %d passed, %d failed\n", tests_total, tests_total-tests_fail, tests_fail);
 }
-

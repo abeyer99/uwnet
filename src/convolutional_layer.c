@@ -57,12 +57,22 @@ matrix im2col(image im, int size, int stride)
     // TODO: 5.1
     // Fill in the column matrix with patches from the image
     for (int channel = 0; channel < im.c; channel++) {
-      for (int kern_start_row = 0; kern_start_row < outh; kern_start_row++) {
-        for (int kern_start_col = 0; kern_start_col < outw; kern_start_col++) {
-          for (int inner_kern_row = 0; inner_kern_row < size; inner_kern_row++) {
-            for (int inner_kern_col = 0; inner_kern_col < size; inner_kern_col++) {
-              out.data[channel*cols*size*size + kern_start_row*outw + kern_start_col + cols*(inner_kern_row*size + inner_kern_col)] =
-                  im.data[im.w*im.h*channel + im.w*(kern_start_row*stride + inner_kern_row) + (kern_start_col*stride + inner_kern_col)];
+      int channel_img = im.w*im.h*channel;
+      int channel_output = channel*cols*size*size;
+      for (int kern_start_row = 0; kern_start_row < outh; kern_start_row++) {  // "center" row of kernel
+        for (int kern_start_col = 0; kern_start_col < outw; kern_start_col++) {  // "center" col of kernel
+          for (int inner_kern_row = -(size-1)/2; inner_kern_row < size/2 + 1; inner_kern_row++) {  // offset row within kernel from center
+            int row_img = im.w*(kern_start_row*stride + inner_kern_row);
+            int row_start_output = kern_start_row*outw + cols*inner_kern_row;
+            for (int inner_kern_col = -(size-1)/2; inner_kern_col < size/2 + 1; inner_kern_col++) {  // offset col within kernel from center
+
+              int col_img = kern_start_col*stride + inner_kern_col;
+              int col_start_output = cols*inner_kern_col + kern_start_col;
+              
+              out.data[channel_output + row_start_output + col_start_output] =
+                  (row_img < 0 || row_img >= im.h || col_img < 0 || col_img >= im.w) ?
+                  0 :
+                  im.data[channel_img + row_img + col_img];
             }
           }
         }
