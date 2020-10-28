@@ -11,7 +11,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 typedef struct{
-    int w,h,c;
+    int w,h,c;  // width, height, channels (or colors)
     float *data;
 } image;
 
@@ -46,4 +46,3 @@ image bilinear_resize(image im, int w, int h);
 // Used for saving images
 
 #endif
-

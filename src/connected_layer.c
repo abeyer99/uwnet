@@ -4,108 +4,139 @@
 #include "uwnet.h"
 
 // Add bias terms to a matrix
-// matrix xw: partially computed output of layer
+// matrix m: partially computed output of layer
 // matrix b: bias to add in (should only be one row!)
-// returns: y = wx + b
-matrix forward_bias(matrix xw, matrix b)
+void forward_bias(matrix m, matrix b)
 {
-    assert(b.rows == 1);
-    assert(xw.cols == b.cols);
-
-    matrix y = copy_matrix(xw);
-    int i,j;
-    for(i = 0; i < xw.rows; ++i){
-        for(j = 0; j < xw.cols; ++j){
-            y.data[i*y.cols + j] += b.data[j];
-        }
-    }
-    return y;
+	assert(b.rows == 1);
+	assert(m.cols == b.cols);
+	int i,j;
+	for(i = 0; i < m.rows; ++i){
+		for(j = 0; j < m.cols; ++j){
+			m.data[i*m.cols + j] += b.data[j];
+		}
+	}
 }
 
-// Calculate dL/db from a dL/dy
-// matrix dy: derivative of loss wrt xw+b, dL/d(xw+b)
-// returns: derivative of loss wrt b, dL/db
-matrix backward_bias(matrix dy)
+// Calculate bias updates from a delta matrix
+// matrix delta: error made by the layer
+// matrix db: delta for the biases
+void backward_bias(matrix delta, matrix db)
 {
-    matrix db = make_matrix(1, dy.cols);
-    int i, j;
-    for(i = 0; i < dy.rows; ++i){
-        for(j = 0; j < dy.cols; ++j){
-            db.data[j] += dy.data[i*dy.cols + j];
-        }
-    }
-    return db;
+	int i, j;
+	for(i = 0; i < delta.rows; ++i){
+		for(j = 0; j < delta.cols; ++j){
+			db.data[j] -= delta.data[i*delta.cols + j];
+		}
+	}
 }
 
 // Run a connected layer on input
 // layer l: pointer to layer to run
-// matrix x: input to layer
-// returns: the result of running the layer y = xw+b
-matrix forward_connected_layer(layer l, matrix x)
+// matrix in: input to layer
+// returns: the result of running the layer: f(wx + b)
+matrix forward_connected_layer(layer l, matrix in)
 {
-    // Saving our input
-    // Probably don't change this
-    free_matrix(*l.x);
-    *l.x = copy_matrix(x);
+	// TODO: 3.1 - run the network forward
+  matrix out = matmul(in, l.w);
+  forward_bias(out, l.b);
+  activate_matrix(out, l.activation);
 
-    // TODO: 3.1 - run the network forward
-    matrix y = make_matrix(x.rows, l.w.cols); // Going to want to change this!
+	// Saving our input and output and making a new delta matrix to hold errors
+	// Probably don't change this
+	l.in[0] = in;
+	free_matrix(l.out[0]);
+	l.out[0] = out;
+	free_matrix(l.delta[0]);
+	l.delta[0] = make_matrix(out.rows, out.cols);
 
-
-    return y;
+	return out;
 }
 
 // Run a connected layer backward
 // layer l: layer to run
-// matrix dy: dL/dy for this layer
-// returns: dL/dx for this layer
-matrix backward_connected_layer(layer l, matrix dy)
+// matrix delta:
+void backward_connected_layer(layer l, matrix prev_delta)
 {
-    matrix x = *l.x;
+	matrix in		= *(l.in);
+	matrix out	 = *(l.out);
+	matrix delta = *(l.delta);
 
-    // TODO: 3.2
-    // Calculate the gradient dL/db for the bias terms using backward_bias
-    // add this into any stored gradient info already in l.db
+	// TODO: 3.2
+	// delta is the error made by this layer, dL/dout
+	// First modify in place to be dL/d(in*w+b) using the gradient of activation
 
-    // Then calculate dL/dw. Use axpy to add this dL/dw into any previously stored
-    // updates for our weights, which are stored in l.dw
+	// First we need to calculate the gradient with out
+	gradient_matrix(out, l.activation, delta);
+	
+	// Calculate the updates for the bias terms using backward_bias
+	// The current bias deltas are stored in l.db
 
-    // Calculate dL/dx and return it
-    matrix dx = copy_matrix(x); // Change this
+	// Next we store our backward bias terms
+	backward_bias(delta, l.db);
 
+	// Then calculate dL/dw. Use axpy to subtract this dL/dw into any previously stored
+	// updates for our weights, which are stored in l.dw
 
-    return dx;
+	// We need to tranpose in, multiply it by delta, then subtract it from l.dw
+ 	// printf("%d, %d, %d, %d\n", delta.rows, delta.cols, in.rows, in.cols);
+	axpy_matrix(-1, matmul(transpose_matrix(in), delta), l.dw);
+
+	if(prev_delta.data){
+		// Finally, if there is a previous layer to calculate for,
+		// calculate dL/d(in). Again, using axpy, add this into the current
+		// value we have for the previous layers delta, prev_delta.
+	        //printf("%d, %d, %d, %d\n", delta.rows, delta.cols, l.w.rows, l.w.cols);
+	        axpy_matrix(1, matmul(delta, transpose_matrix(l.w)), prev_delta);
+	}
 }
 
-// Update weights and biases of connected layer
-// layer l: layer to update
-// float rate: SGD learning rate
-// float momentum: SGD momentum term
-// float decay: l2 normalization term
+// Update
 void update_connected_layer(layer l, float rate, float momentum, float decay)
 {
-    // TODO: 3.3
-    // Apply our updates using our SGD update rule
-    // assume  l.dw = dL/dw - momentum * update_prev
-    // we want l.dw = dL/dw - momentum * update_prev + decay * w
-    // then we update l.w = l.w - rate * l.dw
-    // lastly, l.dw is the negative update (-update) but for the next iteration
-    // we want it to be (-momentum * update) so we just need to scale it a little
+  // TODO: 3.3
+   // Currently l.dw and l.db store:
+   // l.dw = momentum * l.dw_prev - dL/dw
+   // l.db = momentum * l.db_prev - dL/db
 
-    // Do the same for biases as well but no need to use weight decay on biases
+   // For our weights we want to include weight decay:
+   // l.dw = l.dw - decay * l.w
+
+   // Then for both weights and biases we want to apply the updates:
+   // l.w = l.w + rate*l.dw
+   // l.b = l.b + rade*l.db
+
+
+   // Finally, we want to scale dw and db by our momentum to prepare them for the next round
+   // l.dw *= momentum
+   // l.db *= momentum
+  //  axpy_matrix(decay, l.w, *(l.delta));
+
+  // Include weight decay
+  axpy_matrix(-decay, l.w, l.dw);
+
+  // Apply the updates to weights and biases
+  axpy_matrix(rate, l.dw, l.w);
+  axpy_matrix(rate, l.db, l.b);
+  
+  // Scale dw and db by our momentum
+  scal_matrix(momentum, l.dw);
+  scal_matrix(momentum, l.db);
 }
 
-layer make_connected_layer(int inputs, int outputs)
+layer make_connected_layer(int inputs, int outputs, ACTIVATION activation)
 {
-    layer l = {0};
-    l.w  = random_matrix(inputs, outputs, sqrtf(2.f/inputs));
-    l.dw = make_matrix(inputs, outputs);
-    l.b  = make_matrix(1, outputs);
-    l.db = make_matrix(1, outputs);
-    l.x = calloc(1, sizeof(matrix));
-    l.forward  = forward_connected_layer;
-    l.backward = backward_connected_layer;
-    l.update   = update_connected_layer;
-    return l;
+	layer l = {0};
+	l.w	= random_matrix(inputs, outputs, sqrtf(2.f/inputs));
+	l.dw = make_matrix(inputs, outputs);
+	l.b	= make_matrix(1, outputs);
+	l.db = make_matrix(1, outputs);
+	l.in = calloc(1, sizeof(matrix));
+	l.out = calloc(1, sizeof(matrix));
+	l.delta = calloc(1, sizeof(matrix));
+	l.activation = activation;
+	l.forward	= forward_connected_layer;
+	l.backward = backward_connected_layer;
+	l.update	 = update_connected_layer;
+	return l;
 }
-

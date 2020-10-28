@@ -43,24 +43,33 @@ matrix backward_convolutional_bias(matrix dy, int n)
 
 // Make a column matrix out of an image
 // image im: image to process
-// int size: kernel size for convolution operation
+// int size: kernel size for convolution operation. if 3x3 kernel, size=3
 // int stride: stride for convolution
 // returns: column matrix
 matrix im2col(image im, int size, int stride)
 {
-    int i, j, k;
     int outw = (im.w-1)/stride + 1;
     int outh = (im.h-1)/stride + 1;
     int rows = im.c*size*size;
     int cols = outw * outh;
-    matrix col = make_matrix(rows, cols);
+    matrix out = make_matrix_garbage(rows, cols);
 
     // TODO: 5.1
     // Fill in the column matrix with patches from the image
+    for (int channel = 0; channel < im.c; channel++) {
+      for (int kern_start_row = 0; kern_start_row < outh; kern_start_row++) {
+        for (int kern_start_col = 0; kern_start_col < outw; kern_start_col++) {
+          for (int inner_kern_row = 0; inner_kern_row < size; inner_kern_row++) {
+            for (int inner_kern_col = 0; inner_kern_col < size; inner_kern_col++) {
+              out.data[channel*cols*size*size + kern_start_row*outw + kern_start_col + cols*(inner_kern_row*size + inner_kern_col)] =
+                  im.data[im.w*im.h*channel + im.w*(kern_start_row*stride + inner_kern_row) + (kern_start_col*stride + inner_kern_col)];
+            }
+          }
+        }
+      }
+    }
 
-
-
-    return col;
+    return out;
 }
 
 // The reverse of im2col, add elements back into image
@@ -78,7 +87,7 @@ image col2im(int width, int height, int channels, matrix col, int size, int stri
 
     // TODO: 5.2
     // Add values into image im from the column matrix
-    
+
 
 
     return im;
@@ -201,4 +210,3 @@ layer make_convolutional_layer(int w, int h, int c, int filters, int size, int s
     l.update   = update_convolutional_layer;
     return l;
 }
-

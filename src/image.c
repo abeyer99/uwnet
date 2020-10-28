@@ -38,7 +38,7 @@ image make_random_image(int w, int h, int c, float s)
     image out = make_image(w,h,c);
     int i;
     for (i = 0; i < w*h*c; ++i){
-        out.data[i] = 2*s*((float)rand()/RAND_MAX) - s;    
+        out.data[i] = 2*s*((float)rand()/RAND_MAX) - s;
     }
     return out;
 }
@@ -78,7 +78,7 @@ void save_image(image im, const char *name)
     save_image_options(im, name, JPG, 80);
 }
 
-// 
+//
 // Load an image using stb
 // channels = [0..4]
 // channels > 0 forces the image to have that many channels
@@ -139,14 +139,14 @@ float bilinear_interpolate(image im, float x, float y, int c)
     float v10 = get_pixel(im, lx+1, ly, c);
     float v01 = get_pixel(im, lx, ly+1, c);
     float v11 = get_pixel(im, lx+1, ly+1, c);
-    float v =   v00*(1-dx)*(1-dy) + v10*dx*(1-dy) + 
+    float v =   v00*(1-dx)*(1-dy) + v10*dx*(1-dy) +
                 v01*(1-dx)*dy + v11*dx*dy;
     return v;
 }
 
 image bilinear_resize(image im, int w, int h)
 {
-    image r = make_image(w, h, im.c);   
+    image r = make_image(w, h, im.c);
     float xscale = (float)im.w/w;
     float yscale = (float)im.h/h;
     int i, j, k;
@@ -165,7 +165,7 @@ image bilinear_resize(image im, int w, int h)
 
 image nn_resize(image im, int w, int h)
 {
-    image r = make_image(w, h, im.c);   
+    image r = make_image(w, h, im.c);
     float xscale = (float)im.w/w;
     float yscale = (float)im.h/h;
     int i, j, k;
@@ -184,7 +184,7 @@ image nn_resize(image im, int w, int h)
 
 float get_pixel(image im, int x, int y, int c)
 {
-/*
+    /*
     if(x >= im.w) return 0;
     if(y >= im.h) return 0;
     if(x < 0) return 0;

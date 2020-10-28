@@ -23,6 +23,12 @@ typedef struct matrix{
 // returns: matrix of specified size, filled with zeros
 matrix make_matrix(int rows, int cols);
 
+// Make matrix filled with garbage data
+// int rows: number of rows in matrix
+// int cols: number of columns in matrix
+// returns: matrix of specified size
+matrix make_matrix_garbage(int rows, int cols);
+
 // Make a matrix with uniformly random elements
 // int rows, cols: size of matrix
 // float s: range of randomness, [-s, s]
