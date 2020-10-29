@@ -54,25 +54,39 @@ matrix im2col(image im, int size, int stride)
     int cols = outw * outh;
     matrix out = make_matrix_garbage(rows, cols);
 
+    printf("image dimensions: %dx%dx%d\n", im.w,im.h,im.c);
+    printf("output matrix dimensions: %dx%d\n", cols,rows);
+    printf("kernel size: %dx%d\n", size,size);
+    printf("outw, outh: %d, %d\n", outw, outh);
+    printf("stride: %d\n", stride);
     // TODO: 5.1
     // Fill in the column matrix with patches from the image
     for (int channel = 0; channel < im.c; channel++) {
       int channel_img = im.w*im.h*channel;
       int channel_output = channel*cols*size*size;
-      for (int kern_start_row = 0; kern_start_row < outh; kern_start_row++) {  // "center" row of kernel
-        for (int kern_start_col = 0; kern_start_col < outw; kern_start_col++) {  // "center" col of kernel
+      for (int kern_start_row = 0; kern_start_row < outh*stride; kern_start_row+=stride) {  // "center" row of kernel
+        for (int kern_start_col = 0; kern_start_col < outw*stride; kern_start_col+=stride) {  // "center" col of kernel
+          int col_output = kern_start_row*outw/stride + kern_start_col/stride;
           for (int inner_kern_row = -(size-1)/2; inner_kern_row < size/2 + 1; inner_kern_row++) {  // offset row within kernel from center
-            int row_img = im.w*(kern_start_row*stride + inner_kern_row);
-            int row_start_output = kern_start_row*outw + cols*inner_kern_row;
+            int row_img = im.w*(kern_start_row + inner_kern_row) + channel_img;
             for (int inner_kern_col = -(size-1)/2; inner_kern_col < size/2 + 1; inner_kern_col++) {  // offset col within kernel from center
+              int col_img = kern_start_col + inner_kern_col;
+              int row_output = channel_output + (row_img/im.w + (size-1)/2)*size + (col_img + (size-1)/2);
 
-              int col_img = kern_start_col*stride + inner_kern_col;
-              int col_start_output = cols*inner_kern_col + kern_start_col;
-              
-              out.data[channel_output + row_start_output + col_start_output] =
-                  (row_img < 0 || row_img >= im.h || col_img < 0 || col_img >= im.w) ?
-                  0 :
-                  im.data[channel_img + row_img + col_img];
+              int img_pixel = row_img + col_img;
+
+              int out_pixel = 0;//row_output + col_output;
+
+              if (row_img < 0 || col_img < 0 || row_img >= im.h || col_img >= im.w) {
+                out.data[out_pixel] = 0;
+              } else {
+                out.data[out_pixel] = im.data[img_pixel];
+                // printf("%d     ", out.data[out_pixel]);
+              }
+              // out.data[out_pixel] =
+              //     (row_img < 0 || row_img >= im.h || col_img < 0 || col_img >= im.w) ?
+              //     0 :
+              //     im.data[in_pixel];
             }
           }
         }
