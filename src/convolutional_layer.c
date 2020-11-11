@@ -48,52 +48,49 @@ matrix backward_convolutional_bias(matrix dy, int n)
 // returns: column matrix
 matrix im2col(image im, int size, int stride)
 {
-    int outw = (im.w-1)/stride + 1;
-    int outh = (im.h-1)/stride + 1;
-    int rows = im.c*size*size;
-    int cols = outw * outh;
-    matrix out = make_matrix_garbage(rows, cols);
+  int outw = (im.w-1)/stride + 1;
+  int outh = (im.h-1)/stride + 1;
+  int rows = im.c*size*size;
+  int cols = outw * outh;
+  matrix out = make_matrix_garbage(rows, cols);
 
-    printf("image dimensions: %dx%dx%d\n", im.w,im.h,im.c);
-    printf("output matrix dimensions: %dx%d\n", cols,rows);
-    printf("kernel size: %dx%d\n", size,size);
-    printf("outw, outh: %d, %d\n", outw, outh);
-    printf("stride: %d\n", stride);
-    // TODO: 5.1
-    // Fill in the column matrix with patches from the image
-    for (int channel = 0; channel < im.c; channel++) {
-      int channel_img = im.w*im.h*channel;
-      int channel_output = channel*cols*size*size;
-      for (int kern_start_row = 0; kern_start_row < outh*stride; kern_start_row+=stride) {  // "center" row of kernel
-        for (int kern_start_col = 0; kern_start_col < outw*stride; kern_start_col+=stride) {  // "center" col of kernel
-          int col_output = kern_start_row*outw/stride + kern_start_col/stride;
-          for (int inner_kern_row = -(size-1)/2; inner_kern_row < size/2 + 1; inner_kern_row++) {  // offset row within kernel from center
-            int row_img = im.w*(kern_start_row + inner_kern_row) + channel_img;
-            for (int inner_kern_col = -(size-1)/2; inner_kern_col < size/2 + 1; inner_kern_col++) {  // offset col within kernel from center
-              int col_img = kern_start_col + inner_kern_col;
-              int row_output = channel_output + (row_img/im.w + (size-1)/2)*size + (col_img + (size-1)/2);
+  // printf("image dimensions: %dx%dx%d\n", im.w,im.h,im.c);
+  // printf("output matrix dimensions: %dx%d\n", cols,rows);
+  // printf("kernel size: %dx%d\n", size,size);
+  // printf("outw, outh: %d, %d\n", outw, outh);
+  // printf("stride: %d\n", stride);
 
-              int img_pixel = row_img + col_img;
+  // TODO: 5.1
+  // Fill in the column matrix with patches from the image
+  for (int channel = 0; channel < im.c; channel++) {
+    int channel_img = im.w*im.h*channel;
+    int channel_output = channel*cols*size*size;
+    for (int kern_center_row = 0; kern_center_row < outh*stride; kern_center_row+=stride) {  // "center" row of kernel
+      for (int kern_center_col = 0; kern_center_col < outw*stride; kern_center_col+=stride) {  // "center" col of kernel
+        int col_output = kern_center_row*outw/stride + kern_center_col/stride;
+        for (int inner_kern_row = -(size-1)/2; inner_kern_row < size/2 + 1; inner_kern_row++) {  // offset row within kernel from center
+          int row_img = im.w*(kern_center_row + inner_kern_row);
+          int row_output_part1 = (inner_kern_row + (size-1)/2)*size;
+          for (int inner_kern_col = -(size-1)/2; inner_kern_col < size/2 + 1; inner_kern_col++) {  // offset col within kernel from center
+            int col_img = kern_center_col + inner_kern_col;
+            int row_output_part2 = (inner_kern_col + (size-1)/2);
 
-              int out_pixel = 0;//row_output + col_output;
+            int row_output = channel_output + (row_output_part1 + row_output_part2)*cols;
 
-              if (row_img < 0 || col_img < 0 || row_img >= im.h || col_img >= im.w) {
-                out.data[out_pixel] = 0;
-              } else {
-                out.data[out_pixel] = im.data[img_pixel];
-                // printf("%d     ", out.data[out_pixel]);
-              }
-              // out.data[out_pixel] =
-              //     (row_img < 0 || row_img >= im.h || col_img < 0 || col_img >= im.w) ?
-              //     0 :
-              //     im.data[in_pixel];
-            }
+            int img_pixel = channel_img + row_img + col_img;
+            int out_pixel = row_output + col_output;
+
+            out.data[out_pixel] =
+                (row_img < 0 || col_img < 0 || row_img / im.w >= im.h || col_img >= im.w) ?
+                0 :
+                im.data[img_pixel];
           }
         }
       }
     }
+  }
 
-    return out;
+  return out;
 }
 
 // The reverse of im2col, add elements back into image
@@ -103,18 +100,42 @@ matrix im2col(image im, int size, int stride)
 // image im: image to add elements back into
 image col2im(int width, int height, int channels, matrix col, int size, int stride)
 {
-    int i, j, k;
+  image im = make_image(width, height, channels);
+  int outw = (im.w-1)/stride + 1;
+  int outh = (im.h-1)/stride + 1;
+  int rows = im.c*size*size;
+  int cols = outw * outh;
 
-    image im = make_image(width, height, channels);
-    int outw = (im.w-1)/stride + 1;
-    int rows = im.c*size*size;
+  // TODO: 5.2
+  // Add values into image im from the column matrix
+  for (int channel = 0; channel < im.c; channel++) {
+    int channel_img = im.w*im.h*channel;
+    int channel_output = channel*cols*size*size;
+    for (int kern_center_row = 0; kern_center_row < outh*stride; kern_center_row+=stride) {  // "center" row of kernel
+      for (int kern_center_col = 0; kern_center_col < outw*stride; kern_center_col+=stride) {  // "center" col of kernel
+        int col_output = kern_center_row*outw/stride + kern_center_col/stride;
+        for (int inner_kern_row = -(size-1)/2; inner_kern_row < size/2 + 1; inner_kern_row++) {  // offset row within kernel from center
+          int row_img = im.w*(kern_center_row + inner_kern_row);
+          int row_output_part1 = (inner_kern_row + (size-1)/2)*size;
+          for (int inner_kern_col = -(size-1)/2; inner_kern_col < size/2 + 1; inner_kern_col++) {  // offset col within kernel from center
+            int col_img = kern_center_col + inner_kern_col;
+            int row_output_part2 = (inner_kern_col + (size-1)/2);
 
-    // TODO: 5.2
-    // Add values into image im from the column matrix
+            int row_output = channel_output + (row_output_part1 + row_output_part2)*cols;
 
+            int img_pixel = channel_img + row_img + col_img;
+            int out_pixel = row_output + col_output;
 
+            if (!(row_img < 0 || col_img < 0 || row_img / im.w >= im.h || col_img >= im.w)) {
+              im.data[img_pixel] += col.data[out_pixel];
+            }
+          }
+        }
+      }
+    }
+  }
 
-    return im;
+  return im;
 }
 
 // Run a convolutional layer on input
@@ -123,30 +144,30 @@ image col2im(int width, int height, int channels, matrix col, int size, int stri
 // returns: the result of running the layer
 matrix forward_convolutional_layer(layer l, matrix in)
 {
-    assert(in.cols == l.width*l.height*l.channels);
-    // Saving our input
-    // Probably don't change this
-    free_matrix(*l.x);
-    *l.x = copy_matrix(in);
+  assert(in.cols == l.width*l.height*l.channels);
+  // Saving our input
+  // Probably don't change this
+  free_matrix(*l.x);
+  *l.x = copy_matrix(in);
 
-    int i, j;
-    int outw = (l.width-1)/l.stride + 1;
-    int outh = (l.height-1)/l.stride + 1;
-    matrix out = make_matrix(in.rows, outw*outh*l.filters);
-    for(i = 0; i < in.rows; ++i){
-        image example = float_to_image(in.data + i*in.cols, l.width, l.height, l.channels);
-        matrix x = im2col(example, l.size, l.stride);
-        matrix wx = matmul(l.w, x);
-        for(j = 0; j < wx.rows*wx.cols; ++j){
-            out.data[i*out.cols + j] = wx.data[j];
-        }
-        free_matrix(x);
-        free_matrix(wx);
+  int i, j;
+  int outw = (l.width-1)/l.stride + 1;
+  int outh = (l.height-1)/l.stride + 1;
+  matrix out = make_matrix(in.rows, outw*outh*l.filters);
+  for(i = 0; i < in.rows; ++i){
+    image example = float_to_image(in.data + i*in.cols, l.width, l.height, l.channels);
+    matrix x = im2col(example, l.size, l.stride);
+    matrix wx = matmul(l.w, x);
+    for(j = 0; j < wx.rows*wx.cols; ++j){
+      out.data[i*out.cols + j] = wx.data[j];
     }
-    matrix y = forward_convolutional_bias(out, l.b);
-    free_matrix(out);
+    free_matrix(x);
+    free_matrix(wx);
+  }
+  matrix y = forward_convolutional_bias(out, l.b);
+  free_matrix(out);
 
-    return y;
+  return y;
 }
 
 // Run a convolutional layer backward
@@ -206,7 +227,16 @@ matrix backward_convolutional_layer(layer l, matrix dy)
 // float decay: l2 regularization term
 void update_convolutional_layer(layer l, float rate, float momentum, float decay)
 {
-    // TODO: 5.3
+  // TODO: 5.3
+  axpy_matrix(decay, l.w, l.dw);
+
+  // update weights
+  axpy_matrix(-rate, l.dw, l.w);
+  scal_matrix(momentum, l.dw);
+
+  // update biases
+  axpy_matrix(-rate, l.db, l.b);
+  scal_matrix(momentum, l.db);
 }
 
 // Make a new convolutional layer
